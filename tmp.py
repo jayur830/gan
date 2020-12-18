@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from gan.custom_activations import ThresholdedLeakyReLU
+
 if __name__ == '__main__':
     (train_x, train_y), (test_x, test_y) = tf.keras.datasets.mnist.load_data()
     train_x = train_x.reshape(train_x.shape + (1,)).astype("float32") / 255.
@@ -18,7 +20,7 @@ if __name__ == '__main__':
             use_bias=False,
             input_shape=(28, 28, 1)),
         tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Activation(lambda x: max(0, x)),
+        ThresholdedLeakyReLU(alpha, threshold),
         # (28, 28, 8) -> (14, 14, 8)
         tf.keras.layers.MaxPool2D(),
         # (14, 14, 8) -> (14, 14, 16)
@@ -29,7 +31,7 @@ if __name__ == '__main__':
             kernel_initializer="he_normal",
             use_bias=False),
         tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Activation(lambda x: max(0, x)),
+        ThresholdedLeakyReLU(alpha, threshold),
         # (14, 14, 16) -> (7, 7, 16)
         tf.keras.layers.MaxPool2D(),
         # (7, 7, 16) -> (7, 7, 32)
@@ -40,7 +42,7 @@ if __name__ == '__main__':
             kernel_initializer="he_normal",
             use_bias=False),
         tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Activation(lambda x: max(0, x)),
+        ThresholdedLeakyReLU(alpha, threshold),
         # Global Max Pooling
         tf.keras.layers.GlobalMaxPool2D(),
         tf.keras.layers.Dropout(rate=.3),

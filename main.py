@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from mnist_gan import MnistGAN
-from callbacks import imshow
+from gan.mnist_gan import MnistGAN
+from gan.callbacks import imshow
 
 if __name__ == '__main__':
     (train_x, _), (_, _) = tf.keras.datasets.mnist.load_data()

@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from gan import GAN
+from gan.gan import GAN
 
 
 class MnistGAN(GAN):
