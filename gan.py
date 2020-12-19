@@ -16,7 +16,7 @@ class GAN:
         self.__input_shape = input_shape
 
         # Generator
-        self.__generator = self.get_generator(self.__input_shape, kernel_initializer)
+        self.__generator = self.get_generator(kernel_initializer)
 
         # Discriminator
         self.__discriminator = self.get_discriminator(kernel_initializer)
