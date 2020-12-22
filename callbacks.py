@@ -25,3 +25,9 @@ def imshow(generator):
 
     cv2.imshow("Test", total_imgs)
     cv2.waitKey(100)
+
+
+def lpr_imshow(generator):
+    gan_output = generator.predict(np.random.normal(0, 1, size=(1, 23 * 40)))
+    cv2.imshow("Test", gan_output.reshape(gan_output.shape[1:]))
+    cv2.waitKey(1)
