@@ -27,11 +27,5 @@ def imshow(generator):
     cv2.waitKey(100)
 
 
-def lpr_imshow(generator):
-    gan_output = generator.predict(np.random.uniform(low=-1., size=(1, 128)))
-    cv2.imshow("Test", gan_output.reshape(gan_output.shape[1:]))
-    cv2.waitKey(1)
-
-
-def lpr_checkpoint(generator):
+def checkpoint(generator):
     generator.save("generator.h5")

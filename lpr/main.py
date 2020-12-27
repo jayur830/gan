@@ -3,8 +3,8 @@ import numpy as np
 import tensorflow as tf
 
 from glob import glob
-from lpr_gan import LprGAN
-from callbacks import lpr_imshow, lpr_checkpoint
+from lpr.model import LprGAN
+from lpr.callbacks import imshow, checkpoint
 
 
 if __name__ == '__main__':
@@ -25,6 +25,6 @@ if __name__ == '__main__':
         epochs=100000,
         batch_size=2,
         callback=[
-            lpr_imshow,
-            lpr_checkpoint
+            imshow,
+            checkpoint
         ])

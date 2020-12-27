@@ -62,10 +62,10 @@ class GAN:
                 ])
 
                 self.__discriminator.trainable = True
-                self.__discriminator.train_on_batch(d_input, y)
+                print(f"discriminator_loss: {self.__discriminator.train_on_batch(d_input, y, return_dict=True)['loss']}", end="\t")
 
                 self.__discriminator.trainable = False
-                self.__gan.train_on_batch(noise, np.ones(batch_size))
+                print(f"gan_loss: {self.__gan.train_on_batch(noise, np.ones(batch_size), return_dict=True)['loss']}")
 
                 if j % step_callback == 0:
                     for f in callback:
