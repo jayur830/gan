@@ -35,11 +35,12 @@ class GAN:
         pass
 
     def compile(self,
-                optimizer: tf.keras.optimizers.Optimizer,
-                loss: tf.keras.losses.Loss):
-        self.__generator.compile(optimizer, loss)
-        self.__discriminator.compile(optimizer, loss)
-        self.__gan.compile(optimizer, loss)
+                discriminator_optimizer: tf.keras.optimizers.Optimizer,
+                discriminator_loss: tf.keras.losses.Loss,
+                gan_optimizer: tf.keras.optimizers.Optimizer,
+                gan_loss: tf.keras.losses.Loss):
+        self.__discriminator.compile(discriminator_optimizer, discriminator_loss)
+        self.__gan.compile(gan_optimizer, gan_loss)
 
     """
     :param x - Training dataset X
@@ -50,7 +51,7 @@ class GAN:
         for i in range(epochs):
             print(f"{'-' * 10} {i + 1}/{epochs} Epochs {'-' * 10}")
             for j in tqdm(range(x.shape[0] // batch_size)):
-                noise = np.random.normal(0, 1, size=(batch_size, self.__input_shape[0]))
+                noise = np.random.uniform(low=-1., size=(batch_size, self.__input_shape[0]))
 
                 y = np.zeros(2 * batch_size)
                 y[:batch_size] = 1.

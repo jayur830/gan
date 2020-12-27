@@ -4,75 +4,68 @@ from gan import GAN
 
 
 class LprGAN(GAN):
-    def get_generator(self, kernel_initializer: str = "he_normal"):
+    def get_generator(self, kernel_initializer: str = "glorot_uniform"):
         return tf.keras.models.Sequential([
-            # (23 * 40 * 32,)
+            # (128,) -> (4 * 8 * 64,)
             tf.keras.layers.Dense(
-                units=23 * 40 * 32,
+                units=4 * 8 * 64,
                 kernel_initializer=kernel_initializer,
                 use_bias=False),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.LeakyReLU(alpha=.01),
-            # (23 * 40 * 32,) -> (23, 40, 32)
-            tf.keras.layers.Reshape(target_shape=(23, 40, 32)),
-            # (23, 40, 32) -> (23, 40, 16)
+            tf.keras.layers.BatchNormalization(momentum=.9),
+            tf.keras.layers.LeakyReLU(alpha=.1),
+            # (4 * 8 * 64,) -> (4, 8, 64)
+            tf.keras.layers.Reshape(target_shape=(4, 8, 64)),
+            tf.keras.layers.Dropout(rate=.3),
+            # (4, 8, 64) -> (8, 16, 64)
+            tf.keras.layers.UpSampling2D(),
+            # (8, 16, 64) -> (10, 18, 32)
+            tf.keras.layers.Conv2DTranspose(
+                filters=32,
+                kernel_size=3,
+                kernel_initializer=kernel_initializer,
+                use_bias=False),
+            tf.keras.layers.BatchNormalization(momentum=.9),
+            tf.keras.layers.LeakyReLU(alpha=.1),
+            # (10, 18, 32) -> (20, 36, 32)
+            tf.keras.layers.UpSampling2D(),
+            # (20, 36, 32) -> (20, 36, 16)
             tf.keras.layers.Conv2DTranspose(
                 filters=16,
-                kernel_size=3,
                 padding="same",
+                kernel_size=3,
                 kernel_initializer=kernel_initializer,
                 use_bias=False),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.LeakyReLU(alpha=.01),
-            # (23, 40, 16) -> (46, 80, 16)
-            tf.keras.layers.UpSampling2D(),
-            # (46, 80, 16) -> (46, 80, 8)
+            tf.keras.layers.BatchNormalization(momentum=.9),
+            tf.keras.layers.LeakyReLU(alpha=.1),
+            # (20, 36, 16) -> (23, 40, 8)
             tf.keras.layers.Conv2DTranspose(
+                filters=8,
+                kernel_size=(4, 5),
+                kernel_initializer=kernel_initializer,
+                use_bias=False),
+            tf.keras.layers.BatchNormalization(momentum=.9),
+            tf.keras.layers.LeakyReLU(alpha=.1),
+            # (23, 40, 8) -> (23, 40, 3)
+            tf.keras.layers.Conv2DTranspose(
+                filters=3,
+                kernel_size=1,
+                kernel_initializer=kernel_initializer),
+            tf.keras.layers.Activation(activation=tf.keras.activations.sigmoid)
+        ])
+
+    def get_discriminator(self, kernel_initializer: str = "glorot_uniform"):
+        return tf.keras.models.Sequential([
+            # (23, 40, 3) -> (23, 40, 8)
+            tf.keras.layers.Conv2D(
                 filters=8,
                 kernel_size=3,
                 padding="same",
                 kernel_initializer=kernel_initializer,
                 use_bias=False),
-            tf.keras.layers.BatchNormalization(),
             tf.keras.layers.LeakyReLU(alpha=.01),
-            # (46, 80, 8) -> (92, 160, 8)
-            tf.keras.layers.UpSampling2D(),
-            # (92, 160, 8) -> (92, 160, 3)
-            tf.keras.layers.Conv2DTranspose(
-                filters=3,
-                activation="sigmoid",
-                kernel_size=3,
-                padding="same",
-                kernel_initializer=kernel_initializer)
-        ])
-
-    def get_discriminator(self, kernel_initializer: str = "he_normal"):
-        return tf.keras.models.Sequential([
-            # (92, 160, 16) -> (92, 160, 32)
-            tf.keras.layers.Conv2D(
-                filters=32,
-                kernel_size=3,
-                padding="same",
-                kernel_initializer=kernel_initializer,
-                use_bias=False),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.LeakyReLU(alpha=.01),
-            # (92, 160, 32) -> (46, 80, 32)
-            tf.keras.layers.MaxPool2D(),
-            # (46, 80, 32) -> (46, 80, 64)
-            tf.keras.layers.Conv2D(
-                filters=64,
-                kernel_size=3,
-                padding="same",
-                kernel_initializer=kernel_initializer,
-                use_bias=False),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.LeakyReLU(alpha=.01),
-            # (46, 80, 64) -> (23, 40, 64)
-            tf.keras.layers.MaxPool2D(),
+            tf.keras.layers.Dropout(rate=.3),
             # Flatten
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dropout(rate=.2),
             tf.keras.layers.Dense(
                 units=1,
                 activation="sigmoid",

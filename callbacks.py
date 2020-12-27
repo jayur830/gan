@@ -3,7 +3,7 @@ import numpy as np
 
 
 def imshow(generator):
-    gan_output = generator.predict(np.random.normal(0, 1, size=(100, 100)))
+    gan_output = generator.predict(np.random.uniform(low=-1., size=(100, 100)))
     total_imgs = np.zeros(shape=(0, 800))
 
     for r in range(10):
@@ -28,6 +28,10 @@ def imshow(generator):
 
 
 def lpr_imshow(generator):
-    gan_output = generator.predict(np.random.normal(0, 1, size=(1, 23 * 40)))
+    gan_output = generator.predict(np.random.uniform(low=-1., size=(1, 128)))
     cv2.imshow("Test", gan_output.reshape(gan_output.shape[1:]))
     cv2.waitKey(1)
+
+
+def lpr_checkpoint(generator):
+    generator.save("generator.h5")
