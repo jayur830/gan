@@ -8,15 +8,17 @@ if __name__ == '__main__':
 
     gan = MnistGAN(input_shape=(100,))
     gan.compile(
-        discriminator_optimizer=tf.keras.optimizers.Adam(lr=1e-4, beta_1=.5),
-        discriminator_loss=tf.losses.binary_crossentropy,
-        gan_optimizer=tf.keras.optimizers.Adam(lr=1e-3, beta_1=.5),
-        gan_loss=tf.losses.binary_crossentropy)
-    gan.fit(
+        optimizer=tf.keras.optimizers.Adam(lr=1e-4, beta_1=.5),
+        loss=tf.losses.binary_crossentropy)
+    gan.fit_discriminator(
         x=train_x.reshape(train_x.shape + (1,)) / 255.,
         epochs=100,
-        batch_size=256,
-        callback=[
-            imshow,
-            checkpoint
-        ])
+        batch_size=32)
+    # gan.fit_generator(
+    #     x=train_x.reshape(train_x.shape + (1,)) / 255.,
+    #     epochs=100,
+    #     batch_size=256,
+    #     callback=[
+    #         imshow,
+    #         checkpoint
+    #     ])

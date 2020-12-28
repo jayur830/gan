@@ -9,7 +9,7 @@ def imshow(generator):
     for r in range(10):
         row_imgs = np.zeros(shape=(80, 0, 3))
         for c in range(10):
-            img = gan_output[r * 10 + c]
+            img = (gan_output[r * 10 + c] + 1) / 2
             img = cv2.copyMakeBorder(
                 src=cv2.resize(
                     src=img,

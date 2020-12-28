@@ -55,7 +55,7 @@ class Cifar10GAN(GAN):
                 kernel_size=1,
                 padding="same",
                 kernel_initializer=kernel_initializer),
-            tf.keras.layers.Activation(tf.keras.activations.sigmoid)
+            tf.keras.layers.Activation(tf.keras.activations.tanh)
         ])
 
     def get_discriminator(self, kernel_initializer: str = "he_normal"):

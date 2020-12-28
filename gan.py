@@ -35,12 +35,10 @@ class GAN:
         pass
 
     def compile(self,
-                discriminator_optimizer: tf.keras.optimizers.Optimizer,
-                discriminator_loss: tf.keras.losses.Loss,
-                gan_optimizer: tf.keras.optimizers.Optimizer,
-                gan_loss: tf.keras.losses.Loss):
-        self.__discriminator.compile(discriminator_optimizer, discriminator_loss)
-        self.__gan.compile(gan_optimizer, gan_loss)
+                optimizer: tf.keras.optimizers.Optimizer,
+                loss: tf.keras.losses.Loss):
+        self.__discriminator.compile(optimizer, loss)
+        self.__gan.compile(optimizer, loss)
 
     """
     :param x - Training dataset X
@@ -67,6 +65,49 @@ class GAN:
                 self.__discriminator.trainable = False
                 print(f"gan_loss: {self.__gan.train_on_batch(noise, np.ones(batch_size), return_dict=True)['loss']}")
 
-                if j % step_callback == 0:
+                if j % step_callback == 0 and callback is not None and len(callback) != 0:
+                    for f in callback:
+                        f(self.__generator)
+
+    def fit_discriminator(self, x, epochs: int = 1, batch_size: int = 32, callback: list = None, step_callback: int = 10):
+        self.__discriminator.trainable = True
+
+        self.__discriminator.fit(
+
+            epochs=epochs,
+            batch_size=batch_size,
+            callback=callback)
+
+        for i in range(epochs):
+            print(f"{'-' * 10} {i + 1}/{epochs} Epochs {'-' * 10}")
+            loss = 0
+            for j in tqdm(range(x.shape[0] // batch_size)):
+                noise = np.random.uniform(low=-1., size=(batch_size, self.__input_shape[0]))
+
+                y = np.zeros(2 * batch_size)
+                y[:batch_size] = 1.
+
+                d_input = np.concatenate([
+                    x[np.random.randint(0, x.shape[0], size=batch_size)],
+                    self.__generator.predict(noise)
+                ])
+
+                loss = self.__discriminator.train_on_batch(d_input, y, return_dict=True)['loss']
+
+                if j % step_callback == 0 and callback is not None and len(callback) != 0:
+                    for f in callback:
+                        f(self.__discriminator)
+            print(f"discriminator_loss: {loss}")
+
+    def fit_generator(self, x, epochs: int = 1, batch_size: int = 32, callback: list = None, step_callback: int = 10):
+        self.__discriminator.trainable = False
+        for i in range(epochs):
+            print(f"{'-' * 10} {i + 1}/{epochs} Epochs {'-' * 10}")
+            for j in tqdm(range(x.shape[0] // batch_size)):
+                noise = np.random.uniform(low=-1., size=(batch_size, self.__input_shape[0]))
+
+                print(f"gan_loss: {self.__gan.train_on_batch(noise, np.ones(batch_size), return_dict=True)['loss']}")
+
+                if j % step_callback == 0 and callback is not None and len(callback) != 0:
                     for f in callback:
                         f(self.__generator)

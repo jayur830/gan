@@ -16,10 +16,8 @@ if __name__ == '__main__':
 
     gan = LprGAN(input_shape=(128,))
     gan.compile(
-        discriminator_optimizer=tf.keras.optimizers.RMSprop(learning_rate=.0002, decay=6e-8),
-        discriminator_loss=tf.losses.binary_crossentropy,
-        gan_optimizer=tf.keras.optimizers.RMSprop(learning_rate=.0001, decay=3e-8),
-        gan_loss=tf.losses.binary_crossentropy)
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4, beta_1=.5),
+        loss=tf.losses.binary_crossentropy)
     gan.fit(
         x=x,
         epochs=100000,
