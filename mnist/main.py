@@ -8,7 +8,7 @@ if __name__ == '__main__':
 
     gan = MnistGAN(input_shape=(100,))
     gan.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=1e-4, beta_1=.5),
+        optimizer=tf.keras.optimizers.RMSprop(lr=1e-4, decay=3e-8),
         loss=tf.losses.binary_crossentropy)
     gan.fit(
         x=train_x.reshape(train_x.shape + (1,)) / 255.,
