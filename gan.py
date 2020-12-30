@@ -1,113 +1,150 @@
 import numpy as np
 import tensorflow as tf
-from tqdm import tqdm
+
+from concurrent.futures import ThreadPoolExecutor
 
 
-class GAN:
-    """
-    Constructor
-    :param kernel_initializer - Initializer for weights and biases
-    :param input_dim - Dimension of the input
-    """
-    def __init__(self,
-                 kernel_initializer: str = "he_normal",
-                 input_shape: tuple = None):
-        # Input dimensions
+class GAN(tf.keras.models.Model):
+    def __init__(self, input_shape, **kwargs):
+        super(GAN, self).__init__(**kwargs)
         self.__input_shape = input_shape
+        self.__generator = self.get_generator()
+        self.__discriminator = self.get_discriminator()
 
-        # Generator
-        self.__generator = self.get_generator(kernel_initializer)
+    def get_config(self):
+        return None
 
-        # Discriminator
-        self.__discriminator = self.get_discriminator(kernel_initializer)
-        # Discriminator is not trainable yet.
-        self.__discriminator.trainable = False
-
-        # Create Generative Adversarial Networks
-        gan_input = tf.keras.layers.Input(shape=self.__input_shape)
-        gan_output = self.__discriminator(self.__generator(gan_input))
-        self.__gan = tf.keras.models.Model(gan_input, gan_output)
-
-    def get_generator(self, kernel_initializer: str) -> tf.keras.models.Model:
-        pass
-
-    def get_discriminator(self, kernel_initializer: str) -> tf.keras.models.Model:
-        pass
+    def call(self, inputs, training=None, mask=None):
+        return self.__generator(inputs)
 
     def compile(self,
-                optimizer: tf.keras.optimizers.Optimizer,
-                loss: tf.keras.losses.Loss):
-        self.__discriminator.compile(optimizer, loss)
-        self.__gan.compile(optimizer, loss)
+                optimizer=None,
+                loss=None,
+                metrics=None,
+                loss_weights=None,
+                weighted_metrics=None,
+                run_eagerly=None,
+                **kwargs):
+        self.__optimizer = optimizer
+        self.__loss = loss
 
-    """
-    :param x - Training dataset X
-    :epochs - Training epochs
-    :batch_size - Size of the batch in 1 iteration
-    """
-    def fit(self, x, epochs: int = 1, batch_size: int = 32, callback: list = None, step_callback: int = 10):
-        for i in range(epochs):
-            print(f"{'-' * 10} {i + 1}/{epochs} Epochs {'-' * 10}")
-            for j in tqdm(range(x.shape[0] // batch_size)):
-                noise = np.random.uniform(low=-1., size=(batch_size, self.__input_shape[0]))
+    def summary(self, line_length=None, positions=None, print_fn=None):
+        self.__generator.summary()
+        self.__discriminator.summary()
 
-                y = np.zeros(2 * batch_size)
-                y[:batch_size] = 1.
+    def fit(self,
+            x=None,
+            y=None,
+            batch_size=128,
+            epochs=1,
+            verbose=1,
+            callbacks=None,
+            validation_split=0.,
+            validation_data=None,
+            shuffle=True,
+            class_weight=None,
+            sample_weight=None,
+            initial_epoch=0,
+            steps_per_epoch=None,
+            validation_steps=None,
+            validation_batch_size=None,
+            validation_freq=1,
+            max_queue_size=10,
+            workers=1,
+            use_multiprocessing=False):
+        if x is None:
+            raise ValueError("The argument x cannot be None.")
 
-                d_input = np.concatenate([
-                    x[np.random.randint(0, x.shape[0], size=batch_size)],
-                    self.__generator.predict(noise)
-                ])
+        lambda_callbacks = []
+        if callbacks is not None:
+            for callback in callbacks:
+                if type(callback) is tf.keras.callbacks.LambdaCallback:
+                    lambda_callbacks.append(callback)
+
+        batch_count = x.shape[0] // batch_size
+
+        self.__discriminator.compile(
+            optimizer=self.__optimizer,
+            loss=self.__loss)
+        self.__discriminator.trainable = False
+
+        gan_input = tf.keras.layers.Input(shape=self.__input_shape)
+        gan_output = self.__discriminator(self.__generator(gan_input))
+        gan = tf.keras.models.Model(inputs=gan_input, outputs=gan_output)
+        gan.compile(
+            optimizer=self.__optimizer,
+            loss=self.__loss)
+
+        callback_executor = ThreadPoolExecutor(max_workers=16)
+
+        history = [[], []]
+
+        for callback in lambda_callbacks:
+            callback.on_train_begin("")
+
+        for epoch in range(1, epochs + 1):
+            for callback in lambda_callbacks:
+                callback.on_epoch_begin(epoch, "")
+
+            print(f"Epoch {epoch}/{epochs}")
+            progbar = tf.keras.utils.Progbar(batch_count)
+            avg_d_loss, avg_g_loss = 0, 0
+            for batch in range(1, batch_count + 1):
+                for callback in lambda_callbacks:
+                    callback.on_batch_begin(batch, "")
+
+                latent_var = np.random.normal(0, 1, size=(batch_size,) + self.__input_shape)
+
+                image_batch = x[np.random.randint(0, x.shape[0], size=batch_size)]
+
+                generated_images = self.__generator.predict(latent_var)
+                x_discriminator = np.concatenate([image_batch, generated_images])
+
+                y_discriminator = np.zeros(2 * batch_size)
+                y_discriminator[:batch_size] = 0.9
 
                 self.__discriminator.trainable = True
-                print(f"discriminator_loss: {self.__discriminator.train_on_batch(d_input, y, return_dict=True)['loss']}", end="\t")
+                d_loss = self.__discriminator.train_on_batch(x_discriminator, y_discriminator)
 
+                latent_var = np.random.normal(0, 1, size=(batch_size,) + self.__input_shape)
+                y_gan = np.ones(batch_size)
                 self.__discriminator.trainable = False
-                print(f"gan_loss: {self.__gan.train_on_batch(noise, np.ones(batch_size), return_dict=True)['loss']}")
+                g_loss = gan.train_on_batch(latent_var, y_gan)
 
-                if j % step_callback == 0 and callback is not None and len(callback) != 0:
-                    for f in callback:
-                        f(self.__generator)
+                avg_g_loss += g_loss
+                avg_d_loss += d_loss
 
-    def fit_discriminator(self, x, epochs: int = 1, batch_size: int = 32, callback: list = None, step_callback: int = 10):
-        self.__discriminator.trainable = True
-
-        self.__discriminator.fit(
-
-            epochs=epochs,
-            batch_size=batch_size,
-            callback=callback)
-
-        for i in range(epochs):
-            print(f"{'-' * 10} {i + 1}/{epochs} Epochs {'-' * 10}")
-            loss = 0
-            for j in tqdm(range(x.shape[0] // batch_size)):
-                noise = np.random.uniform(low=-1., size=(batch_size, self.__input_shape[0]))
-
-                y = np.zeros(2 * batch_size)
-                y[:batch_size] = 1.
-
-                d_input = np.concatenate([
-                    x[np.random.randint(0, x.shape[0], size=batch_size)],
-                    self.__generator.predict(noise)
+                progbar.update(current=batch, values=[
+                    ("g_loss", g_loss),
+                    ("d_loss", d_loss)
                 ])
 
-                loss = self.__discriminator.train_on_batch(d_input, y, return_dict=True)['loss']
+                for callback in lambda_callbacks:
+                    callback.on_batch_end(batch, "")
+            progbar.update(current=batch_count + 1, values=[
+                ("g_loss", avg_g_loss / batch_count),
+                ("d_loss", avg_d_loss / batch_count)
+            ])
+            history[0].append(avg_g_loss)
+            history[1].append(avg_d_loss)
 
-                if j % step_callback == 0 and callback is not None and len(callback) != 0:
-                    for f in callback:
-                        f(self.__discriminator)
-            print(f"discriminator_loss: {loss}")
+            for callback in lambda_callbacks:
+                callback.on_epoch_end(epoch, "")
 
-    def fit_generator(self, x, epochs: int = 1, batch_size: int = 32, callback: list = None, step_callback: int = 10):
-        self.__discriminator.trainable = False
-        for i in range(epochs):
-            print(f"{'-' * 10} {i + 1}/{epochs} Epochs {'-' * 10}")
-            for j in tqdm(range(x.shape[0] // batch_size)):
-                noise = np.random.uniform(low=-1., size=(batch_size, self.__input_shape[0]))
+            if callbacks is not None:
+                futures = []
+                for f in callbacks:
+                    futures.append(callback_executor.submit(f, epoch, self.__generator))
+                for future in futures:
+                    future.result()
 
-                print(f"gan_loss: {self.__gan.train_on_batch(noise, np.ones(batch_size), return_dict=True)['loss']}")
+        for callback in lambda_callbacks:
+            callback.on_train_end("")
 
-                if j % step_callback == 0 and callback is not None and len(callback) != 0:
-                    for f in callback:
-                        f(self.__generator)
+        return history
+
+    def get_generator(self) -> tf.keras.models.Model:
+        pass
+
+    def get_discriminator(self) -> tf.keras.models.Model:
+        pass

@@ -10,10 +10,14 @@ if __name__ == '__main__':
     gan.compile(
         optimizer=tf.keras.optimizers.Adam(lr=1e-4, beta_1=.5),
         loss=tf.losses.binary_crossentropy)
-    gan.fit_discriminator(
+    gan.fit(
         x=train_x.reshape(train_x.shape + (1,)) / 255.,
         epochs=100,
-        batch_size=32)
+        batch_size=32,
+        callbacks=[
+            tf.keras.callbacks.LambdaCallback(on_batch_end=imshow),
+            checkpoint
+        ])
     # gan.fit_generator(
     #     x=train_x.reshape(train_x.shape + (1,)) / 255.,
     #     epochs=100,

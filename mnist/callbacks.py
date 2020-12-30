@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def imshow(generator):
+def imshow(epoch, generator):
     gan_output = generator.predict(np.random.uniform(low=-1., size=(100, 100)))
     total_imgs = np.zeros(shape=(0, 800))
 
