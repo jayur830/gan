@@ -9,13 +9,13 @@ if __name__ == '__main__':
 
     gan = Cifar10GAN(input_shape=(100,))
     gan.compile(
-        optimizer=tf.keras.optimizers.Adam(lr=1e-4, beta_1=.5),
+        optimizer=tf.keras.optimizers.RMSprop(learning_rate=2e-4, decay=3e-8),
         loss=tf.losses.binary_crossentropy)
     gan.fit(
         x=train_x / 127.5 - 1,
         epochs=100,
         batch_size=256,
-        callback=[
-            imshow,
-            checkpoint
+        callbacks=[
+            tf.keras.callbacks.LambdaCallback(on_batch_end=imshow),
+            tf.keras.callbacks.LambdaCallback(on_epoch_end=checkpoint)
         ])
