@@ -80,31 +80,32 @@ class GAN(tf.keras.models.Model):
         history = [[], []]
 
         for callback in lambda_callbacks:
-            callback.on_train_begin("")
+            callback.on_train_begin(self.__generator)
 
         for epoch in range(1, epochs + 1):
             for callback in lambda_callbacks:
-                callback.on_epoch_begin(epoch, "")
+                callback.on_epoch_begin(epoch, self.__generator)
 
             print(f"Epoch {epoch}/{epochs}")
             progbar = tf.keras.utils.Progbar(batch_count)
             avg_d_loss, avg_g_loss = 0, 0
             for batch in range(1, batch_count + 1):
                 for callback in lambda_callbacks:
-                    callback.on_batch_begin(batch, "")
+                    callback.on_batch_begin(batch, self.__generator)
 
                 latent_var = np.random.normal(0, 1, size=(batch_size,) + self.__input_shape)
 
-                image_batch = x[np.random.randint(0, x.shape[0], size=batch_size)]
-
-                generated_images = self.__generator.predict(latent_var)
-                x_discriminator = np.concatenate([image_batch, generated_images])
-
-                y_discriminator = np.zeros(2 * batch_size)
-                y_discriminator[:batch_size] = 0.9
-
                 self.__discriminator.trainable = True
-                d_loss = self.__discriminator.train_on_batch(x_discriminator, y_discriminator)
+                d_loss = self.__discriminator.train_on_batch(
+                    np.concatenate([
+                        x[np.random.randint(0, x.shape[0], size=batch_size)],
+                        self.__generator.predict(latent_var)
+                    ]),
+                    np.concatenate([
+                        np.ones(batch_size),
+                        np.zeros(batch_size)
+                    ])
+                )
 
                 latent_var = np.random.normal(0, 1, size=(batch_size,) + self.__input_shape)
                 y_gan = np.ones(batch_size)
@@ -115,31 +116,27 @@ class GAN(tf.keras.models.Model):
                 avg_d_loss += d_loss
 
                 progbar.update(current=batch, values=[
-                    ("g_loss", g_loss),
-                    ("d_loss", d_loss)
+                    ("g_loss", g_loss if batch < batch_count else avg_g_loss / batch_count),
+                    ("d_loss", d_loss if batch < batch_count else avg_d_loss / batch_count)
                 ])
 
                 for callback in lambda_callbacks:
-                    callback.on_batch_end(batch, "")
-            progbar.update(current=batch_count + 1, values=[
-                ("g_loss", avg_g_loss / batch_count),
-                ("d_loss", avg_d_loss / batch_count)
-            ])
+                    callback.on_batch_end(batch, self.__generator)
             history[0].append(avg_g_loss)
             history[1].append(avg_d_loss)
 
             for callback in lambda_callbacks:
-                callback.on_epoch_end(epoch, "")
+                callback.on_epoch_end(epoch, self.__generator)
 
             if callbacks is not None:
                 futures = []
                 for f in callbacks:
-                    futures.append(callback_executor.submit(f, epoch, self.__generator))
+                    if type(f) is not tf.keras.callbacks.LambdaCallback:
+                        futures.append(callback_executor.submit(f, epoch, self.__generator))
                 for future in futures:
                     future.result()
-
         for callback in lambda_callbacks:
-            callback.on_train_end("")
+            callback.on_train_end(self.__generator)
 
         return history
 
