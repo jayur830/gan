@@ -3,7 +3,8 @@ import cv2
 import numpy as np
 
 
-def imshow(batch, generator):
+def imshow(batch, models):
+    generator = models[0]
     if batch % 2 == 0:
         gan_output = generator.predict(np.random.normal(size=(100, 100)))
         total_imgs = np.zeros(shape=(0, 800, 3))
@@ -29,7 +30,11 @@ def imshow(batch, generator):
         cv2.waitKey(1)
 
 
-def checkpoint(epoch, generator):
-    if not os.path.exists("./checkpoint"):
-        os.makedirs("./checkpoint")
-    generator.save(f"./checkpoint/generator_epoch_{epoch}.h5")
+def checkpoint(epoch, models):
+    generator, discriminator = models
+    if os.path.exists(f"./generator_epoch_{epoch - 1}.h5"):
+        os.remove(f"./generator_epoch_{epoch - 1}.h5")
+    if os.path.exists(f"./discriminator_epoch_{epoch - 1}.h5"):
+        os.remove(f"./discriminator_epoch_{epoch - 1}.h5")
+    generator.save(f"./generator_epoch_{epoch}.h5")
+    discriminator.save(f"./discriminator_epoch_{epoch}.h5")

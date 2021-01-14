@@ -1,4 +1,5 @@
 lane_day_ag_1/
 WHITE_TWO_LINE_LOCAL/
-checkpoint/
-generator.h5
+*.h5
+test.py
+*.npy

@@ -25,8 +25,22 @@ class GAN(tf.keras.models.Model):
                 weighted_metrics=None,
                 run_eagerly=None,
                 **kwargs):
-        self.__optimizer = optimizer
-        self.__loss = loss
+        self.compile_discriminator(optimizer, loss)
+        self.compile_gan(optimizer, loss)
+
+    def compile_discriminator(self, optimizer, loss):
+        self.__discriminator.compile(
+            optimizer=optimizer,
+            loss=loss)
+        self.__discriminator.trainable = False
+
+    def compile_gan(self, optimizer, loss):
+        gan_input = tf.keras.layers.Input(shape=self.__input_shape)
+        gan_output = self.__discriminator(self.__generator(gan_input))
+        self.__gan = tf.keras.models.Model(inputs=gan_input, outputs=gan_output)
+        self.__gan.compile(
+            optimizer=optimizer,
+            loss=loss)
 
     def summary(self, line_length=None, positions=None, print_fn=None):
         self.__generator.summary()
@@ -63,35 +77,23 @@ class GAN(tf.keras.models.Model):
 
         batch_count = x.shape[0] // batch_size
 
-        self.__discriminator.compile(
-            optimizer=self.__optimizer,
-            loss=self.__loss)
-        self.__discriminator.trainable = False
-
-        gan_input = tf.keras.layers.Input(shape=self.__input_shape)
-        gan_output = self.__discriminator(self.__generator(gan_input))
-        gan = tf.keras.models.Model(inputs=gan_input, outputs=gan_output)
-        gan.compile(
-            optimizer=self.__optimizer,
-            loss=self.__loss)
-
         callback_executor = ThreadPoolExecutor(max_workers=16)
 
         history = [[], []]
 
         for callback in lambda_callbacks:
-            callback.on_train_begin(self.__generator)
+            callback.on_train_begin([self.__generator, self.__discriminator])
 
         for epoch in range(1, epochs + 1):
             for callback in lambda_callbacks:
-                callback.on_epoch_begin(epoch, self.__generator)
+                callback.on_epoch_begin(epoch, [self.__generator, self.__discriminator])
 
             print(f"Epoch {epoch}/{epochs}")
             progbar = tf.keras.utils.Progbar(batch_count)
             avg_d_loss, avg_g_loss = 0, 0
             for batch in range(1, batch_count + 1):
                 for callback in lambda_callbacks:
-                    callback.on_batch_begin(batch, self.__generator)
+                    callback.on_batch_begin(batch, [self.__generator, self.__discriminator])
 
                 latent_var = np.random.normal(0, 1, size=(batch_size,) + self.__input_shape)
 
@@ -110,7 +112,7 @@ class GAN(tf.keras.models.Model):
                 latent_var = np.random.normal(0, 1, size=(batch_size,) + self.__input_shape)
                 y_gan = np.ones(batch_size)
                 self.__discriminator.trainable = False
-                g_loss = gan.train_on_batch(latent_var, y_gan)
+                g_loss = self.__gan.train_on_batch(latent_var, y_gan)
 
                 avg_g_loss += g_loss
                 avg_d_loss += d_loss
@@ -121,22 +123,22 @@ class GAN(tf.keras.models.Model):
                 ])
 
                 for callback in lambda_callbacks:
-                    callback.on_batch_end(batch, self.__generator)
+                    callback.on_batch_end(batch, [self.__generator, self.__discriminator])
             history[0].append(avg_g_loss)
             history[1].append(avg_d_loss)
 
             for callback in lambda_callbacks:
-                callback.on_epoch_end(epoch, self.__generator)
+                callback.on_epoch_end(epoch, [self.__generator, self.__discriminator])
 
             if callbacks is not None:
                 futures = []
                 for f in callbacks:
                     if type(f) is not tf.keras.callbacks.LambdaCallback:
-                        futures.append(callback_executor.submit(f, epoch, self.__generator))
+                        futures.append(callback_executor.submit(f, epoch, [self.__generator, self.__discriminator]))
                 for future in futures:
                     future.result()
         for callback in lambda_callbacks:
-            callback.on_train_end(self.__generator)
+            callback.on_train_end([self.__generator, self.__discriminator])
 
         return history
 
@@ -145,3 +147,21 @@ class GAN(tf.keras.models.Model):
 
     def get_discriminator(self) -> tf.keras.models.Model:
         pass
+
+    def load_generator(self, filepath):
+        self.__generator = tf.keras.models.load_model(filepath=filepath, compile=False)
+
+    def load_discriminator(self, filepath):
+        self.__discriminator = tf.keras.models.load_model(filepath=filepath, compile=False)
+
+    def predict(self,
+              x,
+              batch_size=None,
+              verbose=0,
+              steps=None,
+              callbacks=None,
+              max_queue_size=10,
+              workers=1,
+              use_multiprocessing=False):
+        input_layer = tf.keras.layers.Input(shape=self.__input_shape)
+        return tf.keras.models.Model(input_layer, self.__generator(input_layer)).predict(x)
