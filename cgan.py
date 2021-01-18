@@ -4,10 +4,11 @@ import tensorflow as tf
 from concurrent.futures import ThreadPoolExecutor
 
 
-class GAN(tf.keras.models.Model):
-    def __init__(self, input_dim, **kwargs):
-        super(GAN, self).__init__(**kwargs)
-        self.__input_dim = input_dim
+class CGAN(tf.keras.models.Model):
+    def __init__(self, z_dim, y_dim, **kwargs):
+        super(CGAN, self).__init__(**kwargs)
+        self.__z_dim = z_dim
+        self.__y_dim = y_dim
         self.__generator = self.get_generator()
         self.__discriminator = self.get_discriminator()
 
@@ -34,11 +35,12 @@ class GAN(tf.keras.models.Model):
             loss=loss)
         self.__discriminator.trainable = False
 
-    def compile_gan(self, optimizer, loss):
-        gan_input = tf.keras.layers.Input(shape=(self.__input_dim,))
-        gan_output = self.__discriminator(self.__generator(gan_input))
-        self.__gan = tf.keras.models.Model(inputs=gan_input, outputs=gan_output)
-        self.__gan.compile(
+    def compile_cgan(self, optimizer, loss):
+        gan_input_z = tf.keras.layers.Input(shape=(self.__z_dim,))
+        gan_input_y = tf.keras.layers.Input(shape=(self.__y_dim,))
+        gan_output = self.__discriminator(self.__generator(tf.keras.layers.Concatenate()([gan_input_z, gan_input_y])))
+        self.__cgan = tf.keras.models.Model(inputs=[gan_input_z, gan_input_y], outputs=gan_output)
+        self.__cgan.compile(
             optimizer=optimizer,
             loss=loss)
 
@@ -68,6 +70,8 @@ class GAN(tf.keras.models.Model):
             use_multiprocessing=False):
         if x is None:
             raise ValueError("The argument x cannot be None.")
+        if y is None:
+            raise ValueError("The argument y cannot be None.")
 
         lambda_callbacks = []
         if callbacks is not None:
@@ -95,13 +99,14 @@ class GAN(tf.keras.models.Model):
                 for callback in lambda_callbacks:
                     callback.on_batch_begin(batch, [self.__generator, self.__discriminator])
 
-                latent_var = np.random.normal(0, 1, size=(batch_size, self.__input_dim))
+                z = np.random.normal(0, 1, size=(batch_size, self.__z_dim))
+                y_fake = np.random.randint(y.shape[-1], size=(batch_size, 1))
 
                 self.__discriminator.trainable = True
                 d_loss = self.__discriminator.train_on_batch(
                     np.concatenate([
                         x[np.random.randint(0, x.shape[0], size=batch_size)],
-                        self.__generator.predict(latent_var)
+                        self.__generator(np.concatenate([z, y_fake], axis=1))
                     ]),
                     np.concatenate([
                         np.ones(batch_size),
@@ -109,10 +114,10 @@ class GAN(tf.keras.models.Model):
                     ])
                 )
 
-                latent_var = np.random.normal(0, 1, size=(batch_size, self.__input_dim))
+                z = np.random.normal(0, 1, size=(batch_size, self.__z_dim))
                 y_gan = np.ones(batch_size)
                 self.__discriminator.trainable = False
-                g_loss = self.__gan.train_on_batch(latent_var, y_gan)
+                g_loss = self.__cgan.train_on_batch(z, y_gan)
 
                 avg_g_loss += g_loss
                 avg_d_loss += d_loss
@@ -154,7 +159,6 @@ class GAN(tf.keras.models.Model):
     def load_discriminator(self, filepath):
         self.__discriminator = tf.keras.models.load_model(filepath=filepath, compile=False)
 
-    @tf.function
     def predict(self,
               x,
               batch_size=None,
@@ -164,5 +168,5 @@ class GAN(tf.keras.models.Model):
               max_queue_size=10,
               workers=1,
               use_multiprocessing=False):
-        input_layer = tf.keras.layers.Input(shape=(self.__input_dim,))
-        return tf.keras.models.Model(input_layer, self.__generator(input_layer))(x)
+        input_layer = tf.keras.layers.Input(shape=(self.__z_dim,))
+        return tf.keras.models.Model(input_layer, self.__generator(input_layer)).predict(x)

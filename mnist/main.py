@@ -14,7 +14,7 @@ if __name__ == '__main__':
     x_test = x_test.reshape(x_test.shape + (1,))
     x = np.concatenate([x_train, x_test])
 
-    gan = MnistGAN(input_shape=(100,))
+    gan = MnistGAN(input_dim=100)
 
     h5_list = glob("./*.h5")
     if len(h5_list) != 0:

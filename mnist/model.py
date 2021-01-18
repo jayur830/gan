@@ -4,8 +4,8 @@ from gan import GAN
 
 
 class MnistGAN(GAN):
-    def __init__(self, input_shape):
-        super(MnistGAN, self).__init__(input_shape=input_shape)
+    def __init__(self, input_dim):
+        super(MnistGAN, self).__init__(input_dim=input_dim)
 
     def get_generator(self):
         kernel_initializer = "he_normal"
