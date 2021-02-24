@@ -2,8 +2,8 @@ import tensorflow as tf
 import numpy as np
 
 from glob import glob
-from mnist.model import MnistGAN
-from mnist.callbacks import imshow, checkpoint
+from mnist.mnist_gan import MnistGAN
+from mnist.callbacks import imshow_gan, checkpoint
 
 if __name__ == '__main__':
     (x_train, _), (x_test, _) = tf.keras.datasets.mnist.load_data()
@@ -29,7 +29,7 @@ if __name__ == '__main__':
         epochs=150,
         batch_size=128,
         callbacks=[
-            tf.keras.callbacks.LambdaCallback(on_batch_end=imshow),
+            tf.keras.callbacks.LambdaCallback(on_batch_end=imshow_gan),
             tf.keras.callbacks.LambdaCallback(on_epoch_end=checkpoint)
         ])
     np.save(file="./history.npy", arr=np.asarray(history))

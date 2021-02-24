@@ -101,7 +101,7 @@ class GAN(tf.keras.models.Model):
                 d_loss = self.__discriminator.train_on_batch(
                     np.concatenate([
                         x[np.random.randint(0, x.shape[0], size=batch_size)],
-                        self.__generator.predict(latent_var)
+                        np.asarray(self.__generator(latent_var))
                     ]),
                     np.concatenate([
                         np.ones(batch_size),

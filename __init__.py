@@ -1,5 +1,5 @@
 __all__ = [
-    "main.py",
+    "mnist_gan_main.py",
     "gan",
     "callbacks",
     "mnist_gan"

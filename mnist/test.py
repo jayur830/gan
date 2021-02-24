@@ -10,13 +10,8 @@ num_classes = 10
 if __name__ == '__main__':
     kernel_initializer = "he_normal"
 
-    # (100,)
-    g_input_z = tf.keras.layers.Input(shape=(input_dim,))
-    # (10,)
-    g_input_y = tf.keras.layers.Input(shape=(num_classes,))
-    # (1000,)
-    g = tf.keras.layers.Concatenate()([g_input_z, g_input_y])
     # (1000,) -> (7 * 7 * 128,)
+    g = tf.keras.layers.Input(shape=(100,))
     g = tf.keras.layers.Dense(
         units=7 * 7 * 128,
         kernel_initializer=kernel_initializer,
@@ -58,21 +53,13 @@ if __name__ == '__main__':
         kernel_initializer=kernel_initializer)(g)
     g = tf.keras.layers.Activation(tf.keras.activations.sigmoid)(g)
 
-    g = tf.keras.models.Model([g_input_z, g_input_y], g)
-
-    # (28, 28, 1)
-    d_input_x = tf.keras.layers.Input(shape=(28, 28, 1))
+    # (100,)
+    g_input_z = tf.keras.layers.Input(shape=(input_dim,))
     # (10,)
-    d_input_y = tf.keras.layers.Input(shape=(num_classes,))
-    # (28, 28, 2)
-    d = tf.keras.layers.Concatenate()([
-        d_input_x,
-        tf.keras.layers.Reshape(target_shape=(28, 28, 1))(
-            tf.keras.layers.Dense(
-                units=28 * 28 * 1,
-                kernel_initializer=kernel_initializer)(d_input_y))
-    ])
-    d = tf.keras.layers.LeakyReLU(alpha=.2)(d)
+    g_input_y = tf.keras.layers.Input(shape=(num_classes,))
+    g = tf.keras.models.Model([g_input_z, g_input_y], g(tf.keras.layers.Concatenate()([g_input_z, g_input_y])))
+
+    d = tf.keras.layers.LeakyReLU(alpha=.2)
     # (28, 28, 2) -> (14, 14, 32)
     d = tf.keras.layers.Conv2D(
         filters=32,
@@ -86,19 +73,23 @@ if __name__ == '__main__':
         kernel_size=5,
         strides=2,
         kernel_initializer=kernel_initializer)(d)
-    d = tf.keras.layers.LeakyReLU(alpha=.2)(d)
-    # (7, 7, 64) -> (7, 7, 128)
-    d = tf.keras.layers.Conv2D(
-        filters=128,
-        kernel_size=5,
-        kernel_initializer=kernel_initializer)(d)
     d = tf.keras.layers.Flatten()(d)
     d = tf.keras.layers.Dense(
         units=1,
         kernel_initializer=kernel_initializer)(d)
     d = tf.keras.layers.Activation(tf.keras.activations.sigmoid)(d)
 
-    d = tf.keras.models.Model([d_input_x, d_input_y], d)
+    # (28, 28, 1)
+    d_input_x = tf.keras.layers.Input(shape=(28, 28, 1))
+    # (10,)
+    d_input_y = tf.keras.layers.Input(shape=(num_classes,))
+    d = tf.keras.models.Model([d_input_x, d_input_y], d(tf.keras.layers.Concatenate()([
+        d_input_x,
+        tf.keras.layers.Reshape(target_shape=(28, 28, 1))(
+            tf.keras.layers.Dense(
+                units=28 * 28 * 1,
+                kernel_initializer=kernel_initializer)(d_input_y))
+    ])))
 
     d.trainable = False
     d.compile(
