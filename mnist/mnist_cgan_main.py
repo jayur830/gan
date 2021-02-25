@@ -6,8 +6,8 @@ from mnist.mnist_cgan import MnistCGAN
 
 if __name__ == '__main__':
     (train_x, train_y), (test_x, test_y) = tf.keras.datasets.mnist.load_data()
-    train_x = train_x.reshape(train_x.shape + (1,)) / 255.
-    test_x = test_x.reshape(test_x.shape + (1,)) / 255.
+    train_x = train_x.reshape(train_x.shape + (1,)).astype("float32") / 255.
+    test_x = test_x.reshape(test_x.shape + (1,)).astype("float32") / 255.
     train_y = tf.keras.utils.to_categorical(train_y)
     test_y = tf.keras.utils.to_categorical(test_y)
 

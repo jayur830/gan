@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from cifar10.model import Cifar10GAN
+from cifar10.cifar10_gan import Cifar10GAN
 from cifar10.callbacks import imshow, checkpoint
 
 if __name__ == '__main__':

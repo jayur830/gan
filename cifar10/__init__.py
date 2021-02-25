@@ -1,5 +1,5 @@
 __all__ = [
-    "main",
-    "model",
+    "cifar10_gan_main.py",
+    "cifar10_gan.py",
     "callbacks"
 ]
