@@ -3,3 +3,7 @@ WHITE_TWO_LINE_LOCAL/
 *.h5
 test.py
 *.npy
+*.pyc
+.idea/
+__pycache__/
+venv/

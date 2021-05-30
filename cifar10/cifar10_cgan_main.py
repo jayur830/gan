@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     latent_dim = 100
     num_classes = train_y.shape[-1]
-    epochs = 9
+    epochs = 1000
     batch_size = 128
 
     cgan = Cifar10CGAN(latent_dim, num_classes)

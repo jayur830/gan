@@ -14,7 +14,7 @@ if __name__ == '__main__':
         x.append(cv2.resize(cv2.imread(img), dsize=(640, 368), interpolation=cv2.INTER_AREA))
     x = np.asarray(x).astype("float32") / 255.
 
-    gan = LprGAN(input_shape=(256,))
+    gan = LprGAN(input_dim=256)
     gan.compile(
         optimizer=tf.keras.optimizers.RMSprop(learning_rate=2e-4, decay=3e-8),
         loss=tf.losses.binary_crossentropy)
